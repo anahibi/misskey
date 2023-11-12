@@ -701,6 +701,109 @@ export class NoteCreateService implements OnApplicationShutdown {
 	}
 
 	@bindThis
+	private async postNoteImported(note: MiNote, user: {
+		id: MiUser['id'];
+		username: MiUser['username'];
+		host: MiUser['host'];
+		isBot: MiUser['isBot'];
+		isIndexable: MiUser['isIndexable'];
+	}, data: Option, silent: boolean, tags: string[], mentionedUsers: MinimumUser[]) {
+		const meta = await this.metaService.fetch();
+
+		this.notesChart.update(note, true);
+		if (meta.enableChartsForRemoteUser || (user.host == null)) {
+			this.perUserNotesChart.update(user, note, true);
+		}
+
+		// Register host
+		if (this.userEntityService.isRemoteUser(user)) {
+			this.federatedInstanceService.fetch(user.host).then(async i => {
+				if (note.renote && note.text) {
+					this.instancesRepository.increment({ id: i.id }, 'notesCount', 1);
+				} else if (!note.renote) {
+					this.instancesRepository.increment({ id: i.id }, 'notesCount', 1);
+				}
+				if ((await this.metaService.fetch()).enableChartsForFederatedInstances) {
+					this.instanceChart.updateNote(i.host, note, true);
+				}
+			});
+		}
+
+		if (data.renote && data.text) {
+			// Increment notes count (user)
+			this.incNotesCountOfUser(user);
+		} else if (!data.renote) {
+			// Increment notes count (user)
+			this.incNotesCountOfUser(user);
+		}
+
+		this.pushToTl(note, user);
+
+		this.antennaService.addNoteToAntennas(note, user);
+
+		if (data.reply) {
+			this.saveReply(data.reply, note);
+		}
+
+		if (data.reply == null) {
+			// TODO: キャッシュ
+			this.followingsRepository.findBy({
+				followeeId: user.id,
+				notify: 'normal',
+			}).then(followings => {
+				for (const following of followings) {
+					// TODO: ワードミュート考慮
+					this.notificationService.createNotification(following.followerId, 'note', {
+						noteId: note.id,
+					}, user.id);
+				}
+			});
+		}
+
+		if (data.renote && data.text == null && data.renote.userId !== user.id && !user.isBot) {
+			this.incRenoteCount(data.renote);
+		}
+
+		if (data.poll && data.poll.expiresAt) {
+			const delay = data.poll.expiresAt.getTime() - Date.now();
+			this.queueService.endedPollNotificationQueue.add(note.id, {
+				noteId: note.id,
+			}, {
+				delay,
+				removeOnComplete: true,
+			});
+		}
+		
+		// Pack the note
+		const noteObj = await this.noteEntityService.pack(note, null, { skipHide: true, withReactionAndUserPairCache: true });
+
+		this.globalEventService.publishNotesStream(noteObj);
+
+		this.roleService.addNoteToRoleTimeline(noteObj);
+
+		if (data.channel) {
+			this.channelsRepository.increment({ id: data.channel.id }, 'notesCount', 1);
+			this.channelsRepository.update(data.channel.id, {
+				lastNotedAt: new Date(),
+			});
+
+			this.notesRepository.countBy({
+				userId: user.id,
+				channelId: data.channel.id,
+			}).then(count => {
+				// この処理が行われるのはノート作成後なので、ノートが一つしかなかったら最初の投稿だと判断できる
+				// TODO: とはいえノートを削除して何回も投稿すればその分だけインクリメントされる雑さもあるのでどうにかしたい
+				if (count === 1) {
+					this.channelsRepository.increment({ id: data.channel!.id }, 'usersCount', 1);
+				}
+			});
+		}
+
+		// Register to search database
+		if (user.isIndexable) this.index(note);
+	}
+
+	@bindThis
 	private isRenote(note: Option): note is Option & { renote: MiNote } {
 		return note.renote != null;
 	}
