@@ -52,6 +52,7 @@ export const QUEUE_TYPES = [
 	'userWebhookDeliver',
 	'systemWebhookDeliver',
 ] as const;
+import { MiNote } from '@/models/Note.js';
 
 @Injectable()
 export class QueueService {
@@ -409,6 +410,48 @@ export class QueueService {
 				count: 100,
 			},
 		});
+	}
+
+	@bindThis
+	public createImportNotesJob(user: ThinUser, fileId: MiDriveFile['id'], type: string | null | undefined) {
+		return this.dbQueue.add('importNotes', {
+			user: { id: user.id },
+			fileId: fileId,
+			type: type,
+		}, {
+			removeOnComplete: true,
+			removeOnFail: true,
+		});
+	}
+
+	@bindThis
+	public createImportTweetsToDbJob(user: ThinUser, targets: string[]) {
+		const jobs = targets.map(rel => this.generateToDbJobData('importTweetsToDb', { user, target: rel }));
+		return this.dbQueue.addBulk(jobs);
+	}
+
+	@bindThis
+	public createImportMastoToDbJob(user: ThinUser, targets: string[]) {
+		const jobs = targets.map(rel => this.generateToDbJobData('importMastoToDb', { user, target: rel }));
+		return this.dbQueue.addBulk(jobs);
+	}
+
+	@bindThis
+	public createImportPleroToDbJob(user: ThinUser, targets: string[]) {
+		const jobs = targets.map(rel => this.generateToDbJobData('importPleroToDb', { user, target: rel }));
+		return this.dbQueue.addBulk(jobs);
+	}
+
+	@bindThis
+	public createImportKeyNotesToDbJob(user: ThinUser, targets: string[], note: MiNote['id'] | null) {
+		const jobs = targets.map(rel => this.generateToDbJobData('importKeyNotesToDb', { user, target: rel, note }));
+		return this.dbQueue.addBulk(jobs);
+	}
+
+	@bindThis
+	public createImportIGToDbJob(user: ThinUser, targets: string[]) {
+		const jobs = targets.map(rel => this.generateToDbJobData('importIGToDb', { user, target: rel }));
+		return this.dbQueue.addBulk(jobs);
 	}
 
 	@bindThis
