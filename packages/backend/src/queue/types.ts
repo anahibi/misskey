@@ -58,7 +58,7 @@ export type DbJobMap = {
 	importIGToDb: DbNoteImportToDbJobData;
 	importFBToDb: DbNoteImportToDbJobData;
 	importMastoToDb: DbNoteWithParentImportToDbJobData;
-	importPleroToDb: DbNoteImportToDbJobData;
+	importPleroToDb: DbNoteWithParentImportToDbJobData;
 	importKeyNotesToDb: DbNoteWithParentImportToDbJobData;
 	importFollowing: DbUserImportJobData;
 	importFollowingToDb: DbUserImportToDbJobData;
