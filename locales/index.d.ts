@@ -7646,6 +7646,10 @@ export interface Locale extends ILocale {
              */
             "mentionMax": string;
             /**
+             * ノートのインポート
+             */
+            "canImportNotes": string;
+            /**
              * サーバー招待コードの発行
              */
             "canInvite": string;
