@@ -401,6 +401,166 @@ export class NoteCreateService implements OnApplicationShutdown {
 	}
 
 	@bindThis
+	public async import(user: {
+		id: MiUser['id'];
+		username: MiUser['username'];
+		host: MiUser['host'];
+		isBot: MiUser['isBot'];
+	}, data: Option, silent = false): Promise<MiNote> {
+		// チャンネル外にリプライしたら対象のスコープに合わせる
+		// (クライアントサイドでやっても良い処理だと思うけどとりあえずサーバーサイドで)
+		if (data.reply && data.channel && data.reply.channelId !== data.channel.id) {
+			if (data.reply.channelId) {
+				data.channel = await this.channelsRepository.findOneBy({ id: data.reply.channelId });
+			} else {
+				data.channel = null;
+			}
+		}
+
+		// チャンネル内にリプライしたら対象のスコープに合わせる
+		// (クライアントサイドでやっても良い処理だと思うけどとりあえずサーバーサイドで)
+		if (data.reply && (data.channel == null) && data.reply.channelId) {
+			data.channel = await this.channelsRepository.findOneBy({ id: data.reply.channelId });
+		}
+
+		if (data.createdAt == null) data.createdAt = new Date();
+		if (data.visibility == null) data.visibility = 'public';
+		if (data.localOnly == null) data.localOnly = false;
+		if (data.channel != null) data.visibility = 'public';
+		if (data.channel != null) data.visibleUsers = [];
+		if (data.channel != null) data.localOnly = true;
+
+		const meta = await this.metaService.fetch();
+
+		if (data.visibility === 'public' && data.channel == null) {
+			const sensitiveWords = meta.sensitiveWords;
+			if (this.isSensitive(data, sensitiveWords)) {
+				data.visibility = 'home';
+			} else if ((await this.roleService.getUserPolicies(user.id)).canPublicNote === false) {
+				data.visibility = 'home';
+			}
+		}
+
+		const inSilencedInstance = this.utilityService.isSilencedHost(meta.silencedHosts, user.host);
+
+		if (data.visibility === 'public' && inSilencedInstance && user.host !== null) {
+			data.visibility = 'home';
+		}
+
+		if (data.renote) {
+			switch (data.renote.visibility) {
+				case 'public':
+					// public noteは無条件にrenote可能
+					break;
+				case 'home':
+					// home noteはhome以下にrenote可能
+					if (data.visibility === 'public') {
+						data.visibility = 'home';
+					}
+					break;
+				case 'followers':
+					// 他人のfollowers noteはreject
+					if (data.renote.userId !== user.id) {
+						throw new Error('Renote target is not public or home');
+					}
+
+					// Renote対象がfollowersならfollowersにする
+					data.visibility = 'followers';
+					break;
+				case 'specified':
+					// specified / direct noteはreject
+					throw new Error('Renote target is not public or home');
+			}
+		}
+
+		// Check blocking
+		if (data.renote && data.text == null && data.poll == null && (data.files == null || data.files.length === 0)) {
+			if (data.renote.userHost === null) {
+				if (data.renote.userId !== user.id) {
+					const blocked = await this.userBlockingService.checkBlocked(data.renote.userId, user.id);
+					if (blocked) {
+						throw new Error('blocked');
+					}
+				}
+			}
+		}
+
+		// 返信対象がpublicではないならhomeにする
+		if (data.reply && data.reply.visibility !== 'public' && data.visibility === 'public') {
+			data.visibility = 'home';
+		}
+
+		// ローカルのみをRenoteしたらローカルのみにする
+		if (data.renote && data.renote.localOnly && data.channel == null) {
+			data.localOnly = true;
+		}
+
+		// ローカルのみにリプライしたらローカルのみにする
+		if (data.reply && data.reply.localOnly && data.channel == null) {
+			data.localOnly = true;
+		}
+
+		if (data.text) {
+			if (data.text.length > DB_MAX_NOTE_TEXT_LENGTH) {
+				data.text = data.text.slice(0, DB_MAX_NOTE_TEXT_LENGTH);
+			}
+			data.text = data.text.trim();
+		} else {
+			data.text = null;
+		}
+
+		let tags = data.apHashtags;
+		let emojis = data.apEmojis;
+		let mentionedUsers = data.apMentions;
+
+		// Parse MFM if needed
+		if (!tags || !emojis || !mentionedUsers) {
+			const tokens = (data.text ? mfm.parse(data.text)! : []);
+			const cwTokens = data.cw ? mfm.parse(data.cw)! : [];
+			const choiceTokens = data.poll && data.poll.choices
+				? concat(data.poll.choices.map(choice => mfm.parse(choice)!))
+				: [];
+
+			const combinedTokens = tokens.concat(cwTokens).concat(choiceTokens);
+
+			tags = data.apHashtags ?? extractHashtags(combinedTokens);
+
+			emojis = data.apEmojis ?? extractCustomEmojisFromMfm(combinedTokens);
+
+			mentionedUsers = data.apMentions ?? await this.extractMentionedUsers(user, combinedTokens);
+		}
+
+		tags = tags.filter(tag => Array.from(tag).length <= 128).splice(0, 32);
+
+		if (data.reply && (user.id !== data.reply.userId) && !mentionedUsers.some(u => u.id === data.reply!.userId)) {
+			mentionedUsers.push(await this.usersRepository.findOneByOrFail({ id: data.reply!.userId }));
+		}
+
+		if (data.visibility === 'specified') {
+			if (data.visibleUsers == null) throw new Error('invalid param');
+
+			for (const u of data.visibleUsers) {
+				if (!mentionedUsers.some(x => x.id === u.id)) {
+					mentionedUsers.push(u);
+				}
+			}
+
+			if (data.reply && !data.visibleUsers.some(x => x.id === data.reply!.userId)) {
+				data.visibleUsers.push(await this.usersRepository.findOneByOrFail({ id: data.reply!.userId }));
+			}
+		}
+
+		const note = await this.insertNote(user, data, tags, emojis, mentionedUsers);
+
+		setImmediate('post created', { signal: this.#shutdownController.signal }).then(
+			() => this.postNoteImported(note, user, data, silent, tags!, mentionedUsers!),
+			() => { /* aborted, ignore this */ },
+		);
+
+		return note;
+	}
+
+	@bindThis
 	private async insertNote(user: { id: MiUser['id']; host: MiUser['host']; }, data: Option, tags: string[], emojis: string[], mentionedUsers: MinimumUser[]) {
 		const insert = new MiNote({
 			id: this.idService.gen(data.createdAt?.getTime()),
@@ -706,7 +866,6 @@ export class NoteCreateService implements OnApplicationShutdown {
 		username: MiUser['username'];
 		host: MiUser['host'];
 		isBot: MiUser['isBot'];
-		isIndexable: MiUser['isIndexable'];
 	}, data: Option, silent: boolean, tags: string[], mentionedUsers: MinimumUser[]) {
 		const meta = await this.metaService.fetch();
 
@@ -773,7 +932,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 				removeOnComplete: true,
 			});
 		}
-		
+
 		// Pack the note
 		const noteObj = await this.noteEntityService.pack(note, null, { skipHide: true, withReactionAndUserPairCache: true });
 
@@ -796,7 +955,7 @@ export class NoteCreateService implements OnApplicationShutdown {
 		}
 
 		// Register to search database
-		if (user.isIndexable) this.index(note);
+		this.index(note);
 	}
 
 	@bindThis
