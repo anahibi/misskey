@@ -259,7 +259,10 @@ const importFollowing = async (ev) => {
 };
 
 const importNotes = async (ev) => {
-	const file = await selectFile(ev.currentTarget ?? ev.target);
+	const file = await selectFile({
+		anchorElement: ev.currentTarget ?? ev.target,
+		multiple: false,
+	});
 	misskeyApi('i/import-notes', {
 		fileId: file.id,
 		type: noteType.value,
