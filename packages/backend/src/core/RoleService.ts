@@ -62,6 +62,7 @@ export type RolePolicies = {
 	canImportAntennas: boolean;
 	canImportBlocking: boolean;
 	canImportFollowing: boolean;
+	canImportNotes: boolean;
 	canImportMuting: boolean;
 	canImportUserLists: boolean;
 	chatAvailability: 'available' | 'readonly' | 'unavailable';
@@ -102,6 +103,7 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	canImportMuting: true,
 	canImportUserLists: true,
 	chatAvailability: 'available',
+	canImportNotes: false,
 	uploadableFileTypes: [
 		'text/plain',
 		'application/json',

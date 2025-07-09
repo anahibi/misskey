@@ -188,6 +188,10 @@ export const packedRolePoliciesSchema = {
 			type: 'boolean',
 			optional: false, nullable: false,
 		},
+		canImportNotes: {
+			type: 'boolean',
+			optional: false, nullable: false,
+		},
 		inviteLimit: {
 			type: 'integer',
 			optional: false, nullable: false,
