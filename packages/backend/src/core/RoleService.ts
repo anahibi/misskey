@@ -103,7 +103,7 @@ export const DEFAULT_POLICIES: RolePolicies = {
 	canImportMuting: true,
 	canImportUserLists: true,
 	chatAvailability: 'available',
-	canImportNotes: false,
+	canImportNotes: true,
 	uploadableFileTypes: [
 		'text/plain',
 		'application/json',
