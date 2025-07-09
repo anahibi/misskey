@@ -24,12 +24,12 @@ SPDX-License-Identifier: AGPL-3.0-only
 						<SearchMarker :keywords="['notes', 'import']">
 							<MkFolder v-if="$i && $i.policies.canImportNotes">
 								<template #label><SearchLabel>{{ i18n.ts.import }}</SearchLabel></template>
-								<template #icon><i class="ph-upload ph-bold ph-lg"></i></template>
+								<template #icon><i class="ti ti-upload"></i></template>
 								<MkRadios v-model="noteType" style="padding-bottom: 8px;" small>
-									<template #label>Origin</template>
-									<option value="Misskey">Misskey</option>
+									<template #label>DataType</template>
+									<option value="Misskey">Misskey/Sharkey</option>
 								</MkRadios>
-								<MkButton primary :class="$style.button" inline @click="importNotes($event)"><i class="ph-upload ph-bold ph-lg"></i> {{ i18n.ts.import }}</MkButton>
+								<MkButton primary :class="$style.button" inline @click="importNotes($event)"><i class="ti ti-upload"></i> {{ i18n.ts.import }}</MkButton>
 							</MkFolder>
 						</SearchMarker>
 					</div>
