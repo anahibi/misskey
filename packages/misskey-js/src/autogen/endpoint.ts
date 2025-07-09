@@ -416,6 +416,7 @@ import type {
 	IImportAntennasRequest,
 	IImportBlockingRequest,
 	IImportFollowingRequest,
+	IImportNotesRequest,
 	IImportMutingRequest,
 	IImportUserListsRequest,
 	IMoveRequest,
@@ -918,6 +919,7 @@ export type Endpoints = {
 	'i/import-antennas': { req: IImportAntennasRequest; res: EmptyResponse };
 	'i/import-blocking': { req: IImportBlockingRequest; res: EmptyResponse };
 	'i/import-following': { req: IImportFollowingRequest; res: EmptyResponse };
+	'i/import-notes': { req: IImportNotesRequest; res: EmptyResponse };
 	'i/import-muting': { req: IImportMutingRequest; res: EmptyResponse };
 	'i/import-user-lists': { req: IImportUserListsRequest; res: EmptyResponse };
 	'i/move': { req: IMoveRequest; res: IMoveResponse };

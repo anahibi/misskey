@@ -6,6 +6,9 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    command: ['--default_lua_flags=allow-undeclared-keys','--lock_on_hashtags']
+    ulimits:
+      memlock: -1
     volumes:
       - ./redis:/data
     healthcheck:

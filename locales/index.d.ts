@@ -331,6 +331,22 @@ export interface Locale extends ILocale {
      */
     "import": string;
     /**
+     * インポート元
+     */
+    "importOrigin": string;
+    /**
+     * 他サービスでエクスポートしたノートなどをインポートすることができます。
+     */
+    "importNoteInfo": string;
+    /**
+     * すべてのノートがインポートできるわけではありません。改変のないMisskey以外では全くインポートできない場合もあります。
+     */
+    "importNoteDisclaimer": string;
+    /**
+     * インポートされたノートは、ユーザーページ以外には表示されない場合があります。
+     */
+    "importNoteWarm": string;
+    /**
      * エクスポート
      */
     "export": string;
@@ -7645,6 +7661,10 @@ export interface Locale extends ILocale {
              * ノート内の最大メンション数
              */
             "mentionMax": string;
+            /**
+             * ノートのインポート
+             */
+            "canImportNotes": string;
             /**
              * サーバー招待コードの発行
              */
