@@ -188,7 +188,7 @@ import { prefer } from '@/preferences.js';
 const excludeMutingUsers = ref(false);
 const excludeInactiveUsers = ref(false);
 const withReplies = ref(prefer.s.defaultFollowWithReplies);
-const noteType = ref(null);
+const noteType = ref('Misskey');
 
 const onExportSuccess = () => {
 	os.alert({
