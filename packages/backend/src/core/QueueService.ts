@@ -39,6 +39,7 @@ import type {
 } from './QueueModule.js';
 import type httpSignature from '@peertube/http-signature';
 import type * as Bull from 'bullmq';
+import { MiNote } from '@/models/Note.js';
 import type { Packed } from '@/misc/json-schema.js';
 
 export const QUEUE_TYPES = [
@@ -52,7 +53,6 @@ export const QUEUE_TYPES = [
 	'userWebhookDeliver',
 	'systemWebhookDeliver',
 ] as const;
-import { MiNote } from '@/models/Note.js';
 
 @Injectable()
 export class QueueService {

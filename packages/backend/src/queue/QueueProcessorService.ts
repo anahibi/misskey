@@ -45,6 +45,7 @@ import { CleanProcessorService } from './processors/CleanProcessorService.js';
 import { AggregateRetentionProcessorService } from './processors/AggregateRetentionProcessorService.js';
 import { QueueLoggerService } from './QueueLoggerService.js';
 import { QUEUE, baseWorkerOptions } from './const.js';
+import { ImportNotesProcessorService } from './processors/ImportNotesProcessorService.js';
 
 // ref. https://github.com/misskey-dev/misskey/pull/7635#issue-971097019
 function httpRelatedBackoff(attemptsMade: number) {
@@ -106,6 +107,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 		private exportUserListsProcessorService: ExportUserListsProcessorService,
 		private exportAntennasProcessorService: ExportAntennasProcessorService,
 		private importFollowingProcessorService: ImportFollowingProcessorService,
+		private importNotesProcessorService: ImportNotesProcessorService,
 		private importMutingProcessorService: ImportMutingProcessorService,
 		private importBlockingProcessorService: ImportBlockingProcessorService,
 		private importUserListsProcessorService: ImportUserListsProcessorService,
@@ -239,6 +241,7 @@ export class QueueProcessorService implements OnApplicationShutdown {
 				}
 			}, {
 				...baseWorkerOptions(this.config, QUEUE.DB),
+				concurrency: 10,
 				autorun: false,
 			});
 

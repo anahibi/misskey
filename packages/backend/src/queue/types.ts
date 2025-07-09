@@ -95,6 +95,12 @@ export type DbUserImportJobData = {
 	withReplies?: boolean;
 };
 
+export type DbNoteImportJobData = {
+	user: ThinUser;
+	fileId: MiDriveFile['id'];
+	type?: string;
+};
+
 export type DBAntennaImportJobData = {
 	user: ThinUser,
 	antenna: Antenna
